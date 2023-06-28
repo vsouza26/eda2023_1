@@ -4,20 +4,27 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
-typedef unsigned char bit;
+#include "pattern.h"
+#include "../error_handling/error_handling.h"
 
 typedef struct trie_node{
-  trie_node *zero;
-  trie_node *one;
-  bit b;
+  pattern_symbol p_s;
+  struct trie_node *filhos[GRAMMAR_SIZE];
+  struct trie_node *parent;
+  bool end;
+  int dict_pos;
 } trie_node;
 
 typedef struct trie{
   trie_node *head;
 } trie;
 
-trie *trie_create_tree();
-void trie_add_child(trie_node* node);
+trie *trie_create();
+void trie_add_pattern(trie *t, pattern *p);
+trie_node *trie_add_pattern_return_last_elem_att_dict_pos(trie *t, pattern *p, int pos);
+trie_node *_trie_create_node(pattern_symbol ps);
 void trie_rem_child(trie_node* node);
-bool trie_exists(trie_node* node, pattern *p); 
+bool trie_exists_pattern(trie *t, pattern *p); 
+void trie_list(trie_node *t_n);
+pattern *trie_retrieve_pattern(trie_node *t_n);
 #endif // !TRIE_IMPL TRIE_IMPL
