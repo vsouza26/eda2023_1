@@ -2,11 +2,14 @@
 #include "pattern.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/types.h>
 
 trie *trie_create(){
   trie *t = malloc(sizeof(trie));
   trie_node *t_n = _trie_create_node(NO_SYMBOL);
+  t_n->dict_pos = 0;
   t->head = t_n;
+  t->dict = 1;
   if (t) return t;
   else return NULL;
 }
@@ -27,7 +30,15 @@ trie_node *_trie_create_node(pattern_symbol ps){
 }
 
 void trie_add_pattern(trie *t, pattern *p){
-  if (!pattern_is_valid(p)) handle_error(ERROR_TRIE,"Erro ao tentar adicionar padrão inválido a árvore");
+  if(trie_exists_pattern(t,p)) return;
+  if (!pattern_is_valid(p)) {
+    handle_error(ERROR_TRIE,"Erro ao tentar adicionar padrão inválido a árvore\n");
+    return;
+  }
+  if(t->dict >= ADDR_AVAILABE){
+    handle_error(ERROR_TRIE,"Erro ao tentar adicionar mais nós do que a trie suporta\n");
+    return;
+  }
   pattern_node *p_n = p->begin;
   trie_node *t_n = t->head;
   while (p_n) {
@@ -43,6 +54,9 @@ void trie_add_pattern(trie *t, pattern *p){
     }
   }
   t_n->end = true;
+  t_n->dict_pos = t->dict;
+  t->array[t->dict] = t_n;
+  t->dict++;
 }
 
 trie_node *trie_add_pattern_return_last_elem_att_dict_pos(trie *t, pattern *p, int pos){
@@ -103,4 +117,20 @@ void trie_list(trie_node *t_n){
   }
 }
 
-
+int trie_get_index_of_pattern(trie *t, pattern *p){
+  if(!p) return 0;
+  pattern_node *p_n = p->begin;
+  trie_node *t_n = t->head;
+  while(true){
+    if(t_n == NULL){ printf("t_n == null\n"); return 0;}
+    if(!p_n) { printf("p_n igual a null\n"); return 0;}
+    printf("Comparando t: %d com p_n:%d\n", t_n->p_s, p_n->p);
+    if(t_n->p_s != NO_SYMBOL && t_n->p_s != p_n->p){ printf("simbolo diferente\n"); return 0;}
+    if(t_n->end && p_n->next == NULL) return t_n->dict_pos;
+    if(t_n->p_s != NO_SYMBOL){
+      p_n = p_n->next;
+      if(!p_n) return 0;
+    }
+    t_n = t_n->filhos[p_n->p];
+  }
+}

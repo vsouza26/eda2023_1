@@ -21,8 +21,8 @@ pattern_node *pat_node_create(pattern_symbol p){
 };
 
 void pat_node_delete(pattern_node **p_n){
-  if(p_n != NULL){
-    free(p_n);
+  if(*p_n != NULL){
+    free(*p_n);
     *p_n = NULL;
   }
   else
@@ -42,11 +42,11 @@ pattern *pattern_create(){
 void pattern_delete(pattern **p_ref){
   pattern *p = *p_ref;
   if(!pattern_is_valid(p)) return handle_error(ERROR_PATTERN, "Tentativa de deletar um padrão não válido");
-  pattern_node *p_n = p->begin;
+  pattern_node *p_n = p->begin; 
   while(p_n != NULL){
     pattern_node *next_node = p_n->next;
     pat_node_delete(&p_n);
-    p_n = next_node;
+    p_n = NULL;
   }
   free(p);
   *p_ref = NULL;
