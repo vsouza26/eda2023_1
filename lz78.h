@@ -11,11 +11,11 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <endian.h>
-#define DICT_SIZE 256
+#define ACTIVATE_LZ78_DEBUG 0
 typedef unsigned char byte;
 
 typedef struct uncompress_output {
-  int index;
+  unsigned int index;
   bool bit;
 } uncompress_output;
 

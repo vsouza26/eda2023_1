@@ -2,6 +2,8 @@
 #define PATTERN_IMPL
 #define GRAMMAR_SIZE 2
 #define NO_SYMBOL 256
+
+#define ACTIVATE_DEBUG_PATTERN 0
 #include <stdlib.h>
 #include <stdbool.h>
 #include <stdio.h>

@@ -17,7 +17,8 @@ void add_bit_to_buffer(pattern_symbol p_s, FILE* f_pointer){
   if (buffer_size == 8){
     fwrite(&buffer, 1, sizeof(char),f_pointer); 
     buffer_size = 0;
-    printf("buffer cheio, escrevendo no arquivo\n");
+    if(ACTIVATE_LZ78_DEBUG)
+      handle_debug(DEBUG_LZ78, "buffer cheio, escrevendo no arquivo\n");
   }
 }
 
@@ -29,7 +30,7 @@ uncompress_output uncompress_output_index_and_bit(compressed_output co){
 }
 
 compressed_output compress_index_and_bit(unsigned int index, bool bit){
-  u_int32_t output = index << 1;
+  compressed_output output = index << 1;
   output += bit;
   return output;
 }
@@ -46,43 +47,47 @@ bool get_bit(byte b, int position){
 
 void lz78_compress(char *caminho, char *saida){
     FILE *to_compress = fopen(caminho, "r+b");
+    if(to_compress == NULL)
+      return handle_error(ERROR_LZ78, "Arquivo não existente");
     FILE *compressed = fopen(saida, "w+b");
+    if(compressed == NULL)
+     return handle_error(ERROR_LZ78, "Não pode criar arquivo para saída");
     char c; 
     int dict_pattern_cursor = 0;
     trie *t = trie_create();
     pattern *p = pattern_create();
-    while((c = fgetc(to_compress))){
-      if(feof(to_compress)) break;
+    while(fread(&c, sizeof(char), 1, to_compress) == 1){
       for(int i = 0; i < 8; i++){
-        for(int j = i; j < 8; j++){
-          bool bit = get_bit(c, j);
-          printf("%d",bit); 
+        if(ACTIVATE_LZ78_DEBUG){
+          for(int j = i; j < 8; j++){
+            bool bit = get_bit(c, j);
+            printf("%d",bit);
+          }
+          printf("\n");
         }
-        printf("\n");
         bool bit = get_bit(c, i);
         bit = (pattern_symbol) bit;
         pattern_append(p, bit);
-        pattern_list(p);
         if(!trie_exists_pattern(t,p)){
-          printf("Padrão não existe\n");
           trie_add_pattern(t, p);
           pattern_pop(&p);
           unsigned int index = trie_get_index_of_pattern(t,p);
           compressed_output co = compress_index_and_bit(index,bit);
           fwrite(&co, 1, sizeof(compressed_output), compressed);
-          pattern_delete(&p);
+          if(p != NULL)
+            pattern_delete(&p);
           p = pattern_create();
         }
+        //trie_list(t->head);
       }
-      printf("\n");
     }
+    fclose(to_compress);
     if(p->begin != NULL){
           pattern_symbol p_s = pattern_pop(&p);
           unsigned int index = trie_get_index_of_pattern(t,p);
           compressed_output co = compress_index_and_bit(index,p_s);
           fwrite(&co, 1, sizeof(compressed_output), compressed);
     }
-    trie_list(t->head);
   }
 
 void lz78_expand(char *caminho, char *saida){
@@ -90,39 +95,29 @@ void lz78_expand(char *caminho, char *saida){
     FILE *expanded = fopen(saida, "w+b");
     compressed_output co; 
     trie *t = trie_create();
-    pattern *p = pattern_create();
-    while((fread(&co, 1, 4,to_expand))){
-      if(feof(to_expand)) break;
+    while(fread(&co, sizeof(compressed_output), 1,to_expand) == 1){
       uncompress_output uco = uncompress_output_index_and_bit(co);
-      printf("uco.index: %d, uco.bit: %d",uco.index, uco.bit);
       if(uco.index){
-        if(uco.index > t->dict)
-          printf("Warning!!! Garbage ahead");
         pattern *output_p = trie_retrieve_pattern(t->array[uco.index]);
         pattern_node *p_n = output_p->begin;
-        printf("\npattern start:\n");
         while(p_n){
           add_bit_to_buffer(p_n->p, expanded);
-          printf(" %d ", p_n->p);
           p_n = p_n->next;
         }
-        printf("\npattern finish\n");
         pattern_append(output_p, uco.bit);
         trie_add_pattern(t, output_p);
+        pattern_delete(&output_p);
       }
       if(!uco.index){
+        pattern *p = pattern_create();
         pattern_append(p, uco.bit);
         trie_add_pattern(t, p);
+        pattern_delete(&p);
       }
-      trie_list(t->head);
-      printf("adding %d to buffer\n", uco.bit);
       add_bit_to_buffer(uco.bit, expanded);
-      pattern_delete(&p);
-      p = pattern_create();
     }
-    for(int i = 1; i < 3; i++){
-      printf("t array index: %d, symbol: %d\n", i,t->array[i]->p_s);
-    }
+    fclose(to_expand);
+    fclose(expanded);
 }
 
   int main(int argc, char *argv[]){
@@ -183,8 +178,4 @@ void lz78_expand(char *caminho, char *saida){
     if(flag_e){
       lz78_expand(caminho, caminho_saida);
     }
-    FILE *endianess = fopen("endianess", "w+b");
-    int r = 257;
-    fwrite(&r,1, sizeof(int), endianess);
-    fclose(endianess);
 }

@@ -1,7 +1,8 @@
 #ifndef TRIE_IMPL
 #define TRIE_IMPL
 
-#define ADDR_AVAILABE 100000
+#define ACTIVATE_DEBUG_TRIE 0
+#define ADDR_AVAILABE 2000000
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -19,13 +20,11 @@ typedef struct trie_node{
 typedef struct trie{
   trie_node *head;
   unsigned int dict;
-  //Endereços compostos por 31 bits
   trie_node *array[ADDR_AVAILABE];
 } trie;
 
 trie *trie_create();
 void trie_add_pattern(trie *t, pattern *p);
-trie_node *trie_add_pattern_return_last_elem_att_dict_pos(trie *t, pattern *p, int pos);
 trie_node *_trie_create_node(pattern_symbol ps);
 void trie_rem_child(trie_node* node);
 bool trie_exists_pattern(trie *t, pattern *p); 

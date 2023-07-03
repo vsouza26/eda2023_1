@@ -30,13 +30,15 @@ trie_node *_trie_create_node(pattern_symbol ps){
 }
 
 void trie_add_pattern(trie *t, pattern *p){
-  if(trie_exists_pattern(t,p)) return;
+  if(ACTIVATE_DEBUG_TRIE)
+    printf("Adicionando na trie\n");
   if (!pattern_is_valid(p)) {
     handle_error(ERROR_TRIE,"Erro ao tentar adicionar padrão inválido a árvore\n");
     return;
   }
   if(t->dict >= ADDR_AVAILABE){
-    handle_error(ERROR_TRIE,"Erro ao tentar adicionar mais nós do que a trie suporta\n");
+    if(ACTIVATE_DEBUG_TRIE)
+      handle_debug(DEBUG_TRIE,"Erro ao tentar adicionar mais nós do que a trie suporta\n");
     return;
   }
   pattern_node *p_n = p->begin;
@@ -59,34 +61,22 @@ void trie_add_pattern(trie *t, pattern *p){
   t->dict++;
 }
 
-trie_node *trie_add_pattern_return_last_elem_att_dict_pos(trie *t, pattern *p, int pos){
-  if (!pattern_is_valid(p)) return NULL;
-  pattern_node *p_n = p->begin;
-  trie_node *t_n = t->head;
-  while (p_n) {
-    if(t_n->filhos[p_n->p]){
-      t_n = t_n->filhos[p_n->p];
-      p_n = p_n->next;
-    } else {
-      trie_node *t_n_novo = _trie_create_node(p_n->p);
-      t_n->filhos[p_n->p] = t_n_novo;
-      t_n_novo->parent = t_n;
-      t_n = t_n_novo;
-      p_n = p_n->next;
-    }
-  }
-  t_n->end = true;
-  t_n->dict_pos = pos;
-  return t_n;
-}
-
 bool trie_exists_pattern(trie *t, pattern *p){
   pattern_node *p_n = p->begin;
   trie_node *t_n = t->head;
   while(true){
-    if(t_n == NULL){ printf("t_n == null\n"); return false;}
-    if(!p_n) { printf("p_n igual a null\n"); return false;}
-    printf("Comparando t: %d com p_n:%d\n", t_n->p_s, p_n->p);
+    if(t_n == NULL){ 
+      if(ACTIVATE_DEBUG_TRIE)
+        printf("t_n == null\n"); 
+      return false;
+    }
+    if(!p_n) { 
+      if(ACTIVATE_DEBUG_TRIE)
+        printf("p_n igual a null\n"); 
+      return false;
+    }
+    if(ACTIVATE_DEBUG_TRIE)
+      printf("Comparando t: %d com p_n:%d\n", t_n->p_s, p_n->p);
     if(t_n->p_s != NO_SYMBOL && t_n->p_s != p_n->p){ printf("simbolo diferente\n"); return false;}
     if(t_n->end && p_n->next == NULL) return true;
     if(t_n->p_s != NO_SYMBOL){
@@ -122,9 +112,18 @@ int trie_get_index_of_pattern(trie *t, pattern *p){
   pattern_node *p_n = p->begin;
   trie_node *t_n = t->head;
   while(true){
-    if(t_n == NULL){ printf("t_n == null\n"); return 0;}
-    if(!p_n) { printf("p_n igual a null\n"); return 0;}
-    printf("Comparando t: %d com p_n:%d\n", t_n->p_s, p_n->p);
+    if(t_n == NULL){ 
+      if(ACTIVATE_DEBUG_TRIE)
+        printf("t_n == null\n"); 
+      return 0;
+    }
+    if(!p_n) { 
+      if(ACTIVATE_DEBUG_TRIE)
+        printf("p_n igual a null\n"); 
+      return 0;
+    }
+    if(ACTIVATE_DEBUG_TRIE) 
+      printf("Comparando t: %d com p_n:%d\n", t_n->p_s, p_n->p);
     if(t_n->p_s != NO_SYMBOL && t_n->p_s != p_n->p){ printf("simbolo diferente\n"); return 0;}
     if(t_n->end && p_n->next == NULL) return t_n->dict_pos;
     if(t_n->p_s != NO_SYMBOL){

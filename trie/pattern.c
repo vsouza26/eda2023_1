@@ -4,7 +4,7 @@
 bool pattern_is_valid(pattern *p){
   if (p != NULL) return true;
   else {
-    handle_error(ERROR_PATTERN, "Padrão não válido");
+    handle_debug(DEBUG_PATTERN, "Padrão não válido");
     return false;
   }
 }
@@ -46,7 +46,7 @@ void pattern_delete(pattern **p_ref){
   while(p_n != NULL){
     pattern_node *next_node = p_n->next;
     pat_node_delete(&p_n);
-    p_n = NULL;
+    p_n = next_node;
   }
   free(p);
   *p_ref = NULL;
@@ -118,11 +118,15 @@ pattern_symbol pattern_pop(pattern **p_ref){
   }
   if (aux){
     aux->next = NULL;
-    return p_n->p;
+    pattern_symbol ps = p_n->p;
+    pat_node_delete(&p_n);
+    return ps;
   } else {
     p->begin = NULL;
     pattern_delete(p_ref);
-    return p_n->p;
+    pattern_symbol ps = p_n->p;
+    pat_node_delete(&p_n);
+    return ps;
   }
 }
 
