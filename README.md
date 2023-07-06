@@ -1,13 +1,8 @@
 # eda2023_1
 Trabalho de EDA2 2023.1 - Compressão
-# Trabalho-EDA_2023.1
 
 ## Trabalho Compressão LZ78
 
-ALUNOS:
-* Benjamin Anderson
-* Brian Machado
-* Thiago Souza
 
 ## Biblioteca Utilizada
 
