@@ -11,6 +11,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <endian.h>
+#include <math.h>
 #define ACTIVATE_LZ78_DEBUG 0
 typedef unsigned char byte;
 
@@ -19,7 +20,7 @@ typedef struct uncompress_output {
   bool bit;
 } uncompress_output;
 
-typedef u_int32_t compressed_output;
+typedef u_int64_t compressed_output;
 
 void lz78_compress(char *caminho, char *saida);
 void lz78_expand(char *caminho, char *saida);

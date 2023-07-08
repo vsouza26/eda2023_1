@@ -8,12 +8,23 @@
 
 char buffer;
 int buffer_size = 0;
+unsigned int BIT_REPR = 1;
+unsigned int BIT_BUFFER_REPR = 0;
 
+void force_buffer_flush(FILE * f_pointer, uncompress_output uco){
+    for (int i = 0; i < (buffer_size - 8) * -1; i++){
+      buffer = buffer << 1;
+      buffer += 1;
+    }
+    fwrite(&buffer, 1, sizeof(char),f_pointer); 
+}
 
 void add_bit_to_buffer(pattern_symbol p_s, FILE* f_pointer){
   buffer = buffer << 1;
   buffer += p_s;
   buffer_size += 1;
+  if(ACTIVATE_LZ78_DEBUG)
+    printf("Adicionando %d ao buffer\n", p_s);
   if (buffer_size == 8){
     fwrite(&buffer, 1, sizeof(char),f_pointer); 
     buffer_size = 0;
@@ -40,8 +51,12 @@ bool get_bit(byte b, int position){
     handle_error(ERROR_LZ78, "Posição de bit inexistente");
     exit(1);
   }
-  position = position - 7; 
+  position = position - 7;
   position = position * -1;
+  return (b >> position) & 0x1;
+}
+
+bool get_bit_ftb(u_int32_t b, int position){
   return (b >> position) & 0x1;
 }
 
@@ -55,7 +70,11 @@ void lz78_compress(char *caminho, char *saida){
     char c; 
     int dict_pattern_cursor = 0;
     trie *t = trie_create();
-    pattern *p = pattern_create();
+    trie_node *t_n = t->head;
+    trie_node *t_n_aux = t->head;
+    //CRIAR FLAG DE FINAL DE ARQUIVO
+    uncompress_output final_pattern;
+    bool flag_first_pattern = false;
     while(fread(&c, sizeof(char), 1, to_compress) == 1){
       for(int i = 0; i < 8; i++){
         if(ACTIVATE_LZ78_DEBUG){
@@ -67,54 +86,110 @@ void lz78_compress(char *caminho, char *saida){
         }
         bool bit = get_bit(c, i);
         bit = (pattern_symbol) bit;
-        pattern_append(p, bit);
-        if(!trie_exists_pattern(t,p)){
-          trie_add_pattern(t, p);
-          pattern_pop(&p);
-          unsigned int index = trie_get_index_of_pattern(t,p);
-          compressed_output co = compress_index_and_bit(index,bit);
-          fwrite(&co, 1, sizeof(compressed_output), compressed);
-          if(p != NULL)
-            pattern_delete(&p);
-          p = pattern_create();
+        t_n = t_n->filhos[bit];
+        if(!t_n){
+          int max_index = trie_add_symbol(t, t_n_aux, bit);
+          if(!flag_first_pattern){
+            final_pattern.index = 0;
+            final_pattern.bit = bit;
+            flag_first_pattern = true;
+          }
+          if(ACTIVATE_LZ78_DEBUG)
+            printf("\ndict_pos: %d\nbit_repr: %d\n", t_n_aux->dict_pos, BIT_REPR);
+          for(int i = BIT_REPR - 1; i >= 0 ; i--) {
+            pattern_symbol co_bit = get_bit_ftb(t_n_aux->dict_pos, i);
+            add_bit_to_buffer(co_bit, compressed);
+          } 
+          add_bit_to_buffer(bit, compressed);
+          t_n = t->head;
+          t_n_aux = t->head;
+          if(max_index > 1)
+            BIT_REPR = (int) floor(log2(t->dict)) + 1;
+        } else {
+          t_n_aux = t_n;
         }
-        //trie_list(t->head);
       }
     }
     fclose(to_compress);
-    if(p->begin != NULL){
-          pattern_symbol p_s = pattern_pop(&p);
-          unsigned int index = trie_get_index_of_pattern(t,p);
-          compressed_output co = compress_index_and_bit(index,p_s);
-          fwrite(&co, 1, sizeof(compressed_output), compressed);
+    //adiciona o padrão final no fim do arquivo
+    if(ACTIVATE_LZ78_DEBUG)
+      printf("padrão de fim de arquivo a seguir\n");
+    for(int i = BIT_REPR - 1; i >= 0 ; i--) {
+      pattern_symbol co_bit = get_bit_ftb(final_pattern.index, i);
+      add_bit_to_buffer(co_bit, compressed);
+    } 
+    add_bit_to_buffer(final_pattern.bit, compressed);
+    if(buffer_size){
+        force_buffer_flush(compressed, final_pattern);
     }
-  }
+    fclose(compressed);
+}
 
 void lz78_expand(char *caminho, char *saida){
     FILE *to_expand = fopen(caminho, "r+b");
     FILE *expanded = fopen(saida, "w+b");
-    compressed_output co; 
+    char c; 
     trie *t = trie_create();
-    while(fread(&co, sizeof(compressed_output), 1,to_expand) == 1){
-      uncompress_output uco = uncompress_output_index_and_bit(co);
-      if(uco.index){
-        pattern *output_p = trie_retrieve_pattern(t->array[uco.index]);
-        pattern_node *p_n = output_p->begin;
-        while(p_n){
-          add_bit_to_buffer(p_n->p, expanded);
-          p_n = p_n->next;
+    unsigned int num_bits_a_ler = BIT_REPR + 1;
+    unsigned int num_bits_lidos = 0;
+    //É preciso criar um outro buffer, um de entrada que consegue ler os arquivos e outro de saida.
+    uncompress_output final_pattern;
+    bool final_pattern_flag = false;
+    u_int32_t buffer_entry = 0x00;
+    while(fread(&c, sizeof(char), 1,to_expand) == 1){
+      for (int i = 0; i < 8; i++){
+        bool bit = get_bit(c, i);
+        buffer_entry = buffer_entry << 1;
+        buffer_entry += bit;
+        if(ACTIVATE_LZ78_DEBUG){
+          printf("Buffer_entry:");
+          for(int i = 0; i < 8; i++){
+            printf("%d", get_bit(buffer_entry, i));
+          }
+          printf("\n");
         }
-        pattern_append(output_p, uco.bit);
-        trie_add_pattern(t, output_p);
-        pattern_delete(&output_p);
+        num_bits_lidos++;
+        if(num_bits_lidos == num_bits_a_ler){
+          uncompress_output uco = uncompress_output_index_and_bit(buffer_entry);
+          if(ACTIVATE_LZ78_DEBUG){
+            printf("index: %d\n", uco.index);
+          }
+          if(ACTIVATE_LZ78_DEBUG){
+            printf("final_pattern.index: %d, final_pattern.bit: %d\nuco.index: %d, uco.bit: %d\n", final_pattern.index, final_pattern.bit, uco.index, uco.bit);
+          }
+          if(uco.bit == final_pattern.bit && uco.index == final_pattern.index && final_pattern_flag ==  true){
+             exit(0);
+          }
+          if(uco.index){
+            pattern *output_p = trie_retrieve_pattern(t->array[uco.index]);
+            pattern_node *p_n = output_p->begin;
+            while(p_n){
+              if(ACTIVATE_LZ78_DEBUG)
+                printf("Adding %d from pattern\n", p_n->p);
+              add_bit_to_buffer(p_n->p, expanded);
+              p_n = p_n->next;
+            }
+            int max_index = trie_add_symbol(t, t->array[uco.index], bit);
+            pattern_delete(&output_p);
+          }
+          if(!uco.index){
+            if(!final_pattern_flag){
+              final_pattern.index = 0;
+              final_pattern.bit = bit;
+              final_pattern_flag = true;
+            }
+            trie_add_symbol(t, t->head, bit);
+          }
+          add_bit_to_buffer(uco.bit, expanded);
+          buffer_entry = 0x00;
+          num_bits_lidos = 0;
+          if(t->dict > 2)
+            BIT_REPR = floor(log2(t->dict)) + 1;
+          num_bits_a_ler = BIT_REPR + 1;
+          if(ACTIVATE_LZ78_DEBUG)
+            printf("Fim da palavra a ser lida\nBIT_REPR:%d\nBIT_BUFFER_REPR:%d\nnum_bits_a_ler:%d\nt->dict:%d\n", BIT_REPR, BIT_BUFFER_REPR, num_bits_a_ler,t->dict);
+        }
       }
-      if(!uco.index){
-        pattern *p = pattern_create();
-        pattern_append(p, uco.bit);
-        trie_add_pattern(t, p);
-        pattern_delete(&p);
-      }
-      add_bit_to_buffer(uco.bit, expanded);
     }
     fclose(to_expand);
     fclose(expanded);

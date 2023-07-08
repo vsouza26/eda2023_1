@@ -1,11 +1,12 @@
 TARGET=lz78_compressor
 CXX=gcc
 LD=gcc
+ARGS=-lm
 OBJS=trie.o pattern.o error_handling.o lz78.o
 all:$(OBJS)
-	$(LD) -o $(TARGET) $(OBJS)
+	$(LD) -o $(TARGET) $(OBJS) $(ARGS)
 lz78.o: ./lz78.c
-	$(CC) -c ./lz78.c -o lz78.o
+	$(CC) -c ./lz78.c -o lz78.o -lm
 trie.o: ./trie/trie.c
 	$(CC) -c ./trie/trie.c -o trie.o
 pattern.o: ./trie/pattern.c

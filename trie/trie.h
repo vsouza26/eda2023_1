@@ -1,8 +1,9 @@
 #ifndef TRIE_IMPL
 #define TRIE_IMPL
 
+#include <sys/types.h>
 #define ACTIVATE_DEBUG_TRIE 0
-#define ADDR_AVAILABE 2000000
+#define ADDR_AVAILABE 20000000
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -31,4 +32,6 @@ bool trie_exists_pattern(trie *t, pattern *p);
 void trie_list(trie_node *t_n);
 pattern *trie_retrieve_pattern(trie_node *t_n);
 int trie_get_index_of_pattern(trie *t, pattern *p);
+trie_node *trie_traverse_pattern(trie_node *t_n, pattern_symbol p_s);
+u_int32_t trie_add_symbol(trie *t, trie_node *t_n, pattern_symbol p_s);
 #endif // !TRIE_IMPL TRIE_IMPL

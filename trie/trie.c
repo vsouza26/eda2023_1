@@ -133,3 +133,25 @@ int trie_get_index_of_pattern(trie *t, pattern *p){
     t_n = t_n->filhos[p_n->p];
   }
 }
+
+trie_node* trie_traverse_pattern(trie_node *t_n, pattern_symbol p_s){
+  if(ACTIVATE_DEBUG_TRIE)
+    printf("Viajando na árvore\n");
+  return t_n->filhos[p_s];
+}
+
+u_int32_t trie_add_symbol(trie *t, trie_node *t_n, pattern_symbol p_s){
+    if(t->dict >= ADDR_AVAILABE){
+      if(ACTIVATE_DEBUG_TRIE)
+        handle_debug(DEBUG_TRIE,"Erro ao tentar adicionar mais nós do que a trie suporta\n");
+      return t_n->dict_pos;
+    }
+    trie_node *t_n_novo = _trie_create_node(p_s);
+    t_n->filhos[p_s] = t_n_novo;
+    t_n_novo->parent = t_n;
+    t_n_novo->end = true;
+    t_n_novo->dict_pos = t->dict;
+    t->array[t->dict] = t_n_novo;
+    t->dict++;
+    return t_n_novo->dict_pos;
+}
